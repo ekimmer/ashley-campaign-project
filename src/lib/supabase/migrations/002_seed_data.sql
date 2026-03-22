@@ -12,10 +12,9 @@ values (
   '{
     "candidate_terms": [
       "Tara Durant",
-      "Durant VA",
-      "Durant Congress",
-      "Durant campaign",
-      "Durant Virginia"
+      "Tara Durant Virginia",
+      "Tara Durant Congress",
+      "Tara Durant campaign"
     ],
     "general_race_terms": [
       "VA congressional race",

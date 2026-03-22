@@ -21,6 +21,11 @@ export async function searchNews(
   query: string,
   num: number = 10
 ): Promise<SerperNewsResult[]> {
+  // Wrap multi-word queries in quotes for exact phrase matching
+  const formattedQuery = query.includes(" ") && !query.startsWith('"')
+    ? `"${query}"`
+    : query;
+
   const response = await fetch(SERPER_API_URL, {
     method: "POST",
     headers: {
@@ -28,7 +33,7 @@ export async function searchNews(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      q: query,
+      q: formattedQuery,
       num,
       type: "news",
     }),
