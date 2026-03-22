@@ -18,6 +18,7 @@ export interface AlertGroupingResult {
 }
 
 export interface AIAnalysisResult {
+  politically_relevant: boolean;
   bin: BinType;
   sentiment: SentimentType;
   reach: ReachType;
@@ -53,8 +54,11 @@ Headline: {headline}
 Outlet: {outlet}
 Content: {content}
 
+FIRST: Determine if this article is about politics, government, elections, or policy. If the article is about sports, entertainment, obituaries, business/marketing, or any non-political topic, set "politically_relevant" to false and you may leave other fields at defaults.
+
 Return a JSON object with these exact fields:
 {
+  "politically_relevant": true | false,
   "bin": "candidate" | "opponent" | "general_race",
   "sentiment": "positive" | "neutral" | "negative" | "mixed",
   "reach": "national" | "regional" | "local" | "niche",

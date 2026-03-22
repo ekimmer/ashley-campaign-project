@@ -145,6 +145,12 @@ export async function runIngestion(campaignId: string): Promise<{ newArticles: n
         opponentNames
       );
 
+      // Skip non-political articles
+      if (!analysis.politically_relevant) {
+        console.log(`Skipping non-political article: ${articleData.title}`);
+        continue;
+      }
+
       // Insert article
       const { data: insertedArticle, error: insertError } = await supabase
         .from("articles")
