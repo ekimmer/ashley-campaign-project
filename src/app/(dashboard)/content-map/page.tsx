@@ -5,12 +5,12 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useCampaign } from "@/hooks/use-campaign";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Lightbulb, Newspaper, MessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type {
   ContentIdea,
   NewsletterOutline,
@@ -186,31 +186,56 @@ export default function ContentMapPage() {
     );
   }
 
+  const [activeTab, setActiveTab] = useState<"ideas" | "newsletter" | "hits">("ideas");
+
+  const tabs = [
+    { id: "ideas" as const, label: "Social & Video Ideas", icon: Lightbulb, count: ideas.length },
+    { id: "newsletter" as const, label: "Newsletter", icon: Newspaper, count: newsletters.length },
+    { id: "hits" as const, label: "Hit Responses", icon: MessageSquare, count: hits.length },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Lightbulb className="h-7 w-7 text-primary" />
-        <h1 className="text-2xl font-bold">ContentMap</h1>
+      <h1 className="text-2xl font-bold">ContentMap</h1>
+
+      {/* Navigation cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isSelected = activeTab === tab.id;
+          return (
+            <div
+              key={tab.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setActiveTab(tab.id); }}
+              className={cn(
+                "rounded-xl border-2 p-5 cursor-pointer transition-all",
+                isSelected
+                  ? "border-primary bg-primary/5 shadow-[0_0_12px_rgba(236,72,153,0.3)]"
+                  : "border-border bg-card hover:border-primary/50"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Icon className={cn("h-5 w-5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                <div>
+                  <p className={cn("font-semibold text-sm", isSelected ? "text-primary" : "text-foreground")}>
+                    {tab.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {tab.count} {tab.count === 1 ? "item" : "items"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <Tabs defaultValue="ideas" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="ideas" className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4" />
-            Social & Video Ideas
-          </TabsTrigger>
-          <TabsTrigger value="newsletter" className="flex items-center gap-2">
-            <Newspaper className="h-4 w-4" />
-            Newsletter
-          </TabsTrigger>
-          <TabsTrigger value="hits" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Hit Responses
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab 1: Social & Video Ideas */}
-        <TabsContent value="ideas" className="space-y-4">
+      {/* Tab content */}
+      {activeTab === "ideas" && (
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               AI-generated content ideas based on recent news coverage.
@@ -269,10 +294,12 @@ export default function ContentMapPage() {
               ))}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Tab 2: Newsletter */}
-        <TabsContent value="newsletter" className="space-y-4">
+      {/* Tab 2: Newsletter */}
+      {activeTab === "newsletter" && (
+        <div className="space-y-4">
           {newsletterLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-8 w-48" />
@@ -349,10 +376,12 @@ export default function ContentMapPage() {
               )}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Tab 3: Hit Responses */}
-        <TabsContent value="hits" className="space-y-4">
+      {/* Tab 3: Hit Responses */}
+      {activeTab === "hits" && (
+        <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Negative comments and attacks detected in news coverage, with
             AI-generated response strategies.
@@ -470,8 +499,8 @@ export default function ContentMapPage() {
               ))}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
