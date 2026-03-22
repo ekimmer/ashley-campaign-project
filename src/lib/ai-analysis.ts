@@ -7,6 +7,16 @@ import type {
   Campaign,
 } from "@/types/database";
 
+export interface CandidateHitResult {
+  source_name: string;
+  comment_summary: string;
+  context: string;
+}
+
+export interface AlertGroupingResult {
+  existing_alert_id: string | null;
+}
+
 export interface AIAnalysisResult {
   bin: BinType;
   sentiment: SentimentType;
@@ -18,6 +28,7 @@ export interface AIAnalysisResult {
   alert_tier: AlertTier;
   alert_reason: string | null;
   detected_entities: DetectedEntityResult[];
+  candidate_hits: CandidateHitResult[];
 }
 
 export interface DetectedEntityResult {
@@ -63,6 +74,13 @@ Return a JSON object with these exact fields:
       "entity_type": "opponent" | "supporter" | "neutral" | "other",
       "sentiment_toward": "positive" | "neutral" | "negative" | "mixed"
     }
+  ],
+  "candidate_hits": [
+    {
+      "source_name": "Person or organization making the negative statement",
+      "comment_summary": "1-2 sentence summary of the negative comment or attack",
+      "context": "The direct quote or paraphrase from the article"
+    }
   ]
 }
 
@@ -76,8 +94,62 @@ Classification rules:
 - alert_tier "none": Background/low-impact coverage
 - va_politics_relevant: true if article discusses broader VA political dynamics, statewide issues, or political landscape
 - detected_entities: List ALL people mentioned (excluding {candidate_name}). Flag potential opponents and supporters.
+- candidate_hits: Extract ANY specific negative comments, criticisms, or attacks directed at {candidate_name} or the Virginia GOP in the context of the congressional race. Include statements from any source: political figures, Democrat affiliates, opponents, PACs, advocacy groups, or individuals. Return an empty array if no negative hits are found.
 
 Return ONLY valid JSON, no markdown or explanation.`;
+
+export async function determineAlertGrouping(
+  alertTitle: string,
+  alertDescription: string,
+  alertTier: string,
+  recentAlerts: { id: string; title: string; description: string; tier: string }[]
+): Promise<AlertGroupingResult> {
+  if (recentAlerts.length === 0) {
+    return { existing_alert_id: null };
+  }
+
+  const alertList = recentAlerts
+    .map((a) => `- ID: ${a.id} | Tier: ${a.tier} | ${a.title}: ${a.description}`)
+    .join("\n");
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 200,
+    messages: [
+      {
+        role: "user",
+        content: `You are a campaign alert system. Determine if a new alert belongs to an existing alert topic or is a new topic.
+
+New alert:
+- Title: ${alertTitle}
+- Description: ${alertDescription}
+- Tier: ${alertTier}
+
+Existing recent alerts:
+${alertList}
+
+Rules:
+- Only group if the new alert is about the SAME topic/event as an existing alert
+- NEVER group a critical-tier alert under a lower-tier alert
+- If unsure, create a new alert (return null)
+
+Return JSON: {"existing_alert_id": "uuid-of-matching-alert" or null}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { existing_alert_id: null };
+
+  try {
+    return JSON.parse(jsonMatch[0]) as AlertGroupingResult;
+  } catch {
+    return { existing_alert_id: null };
+  }
+}
 
 export async function analyzeArticle(
   headline: string,
@@ -215,5 +287,140 @@ Return ONLY valid JSON.`,
   const text = response.content[0].type === "text" ? response.content[0].text : "";
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in briefing response");
+  return JSON.parse(jsonMatch[0]);
+}
+
+export async function generateContentIdeas(
+  articles: { headline: string; outlet: string; ai_summary: string; sentiment: string; key_themes: string[]; date_published: string }[],
+  candidateName: string
+): Promise<{ ideas: { category: string; title: string; content: string; format: string; source_headline: string }[] }> {
+  const articleList = articles
+    .map((a) => `- [${a.sentiment}] ${a.headline} (${a.outlet}, ${a.date_published}): ${a.ai_summary}\n  Themes: ${a.key_themes.join(", ")}`)
+    .join("\n");
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a campaign content strategist for the ${candidateName} campaign. Based on recent news coverage, generate social media and video content ideas that maximize impact and virality.
+
+Recent articles (${articles.length} total):
+${articleList}
+
+Generate 5-8 content ideas. For each, provide:
+- category: "social" (social media post), "video" (reel/video), or "interview" (talking points)
+- title: A catchy, actionable title for the content piece
+- content: 2-3 sentence description of the content, including suggested messaging, tone, and hook
+- format: Specific format (e.g., "Instagram Reel", "Twitter/X Thread", "Facebook Post", "TikTok Video", "Interview Prep")
+- source_headline: The article headline this idea draws from
+
+Focus on:
+- Responding to current narratives in the news cycle
+- Proactive messaging that positions the candidate favorably
+- Content that supporters would want to share
+- Addressing attacks or negative coverage constructively
+
+Return JSON:
+{
+  "ideas": [
+    {"category": "social", "title": "...", "content": "...", "format": "...", "source_headline": "..."}
+  ]
+}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in content ideas response");
+  return JSON.parse(jsonMatch[0]);
+}
+
+export async function generateNewsletterOutline(
+  articles: { headline: string; outlet: string; ai_summary: string; bin: string; sentiment: string; date_published: string }[],
+  candidateName: string,
+  district: string
+): Promise<{ outline_html: string }> {
+  const articleList = articles
+    .map((a) => `- [${a.bin}/${a.sentiment}] ${a.headline} (${a.outlet}, ${a.date_published}): ${a.ai_summary}`)
+    .join("\n");
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a campaign communications director for the ${candidateName} campaign (${district}). Draft a daily newsletter outline for campaign supporters.
+
+Recent articles (last 24 hours, ${articles.length} total):
+${articleList}
+
+Create a newsletter outline with these sections:
+1. **Today's Top Stories** - 2-3 most important stories with brief summaries and campaign perspective
+2. **Campaign Updates** - What the candidate is doing, upcoming events, achievements
+3. **In the News** - Other notable coverage with brief context
+4. **What You Can Do** - 1-2 calls to action for supporters (share, volunteer, donate, attend events)
+5. **Quote of the Day** - An inspiring or relevant quote
+
+Write in a warm, engaging tone appropriate for campaign supporters. Use HTML formatting (h2, h3, p, ul, li, strong, em tags).
+
+Return JSON:
+{
+  "outline_html": "<h2>Today's Top Stories</h2>..."
+}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in newsletter response");
+  return JSON.parse(jsonMatch[0]);
+}
+
+export async function generateHitResponse(
+  hit: { source_name: string; comment_summary: string; context: string },
+  candidateName: string
+): Promise<{ response_text: string; tone: string }> {
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a rapid response strategist for the ${candidateName} campaign. Draft a response to a negative hit.
+
+Negative hit:
+- Source: ${hit.source_name}
+- Summary: ${hit.comment_summary}
+- Original context: ${hit.context}
+
+Generate a strategic response that:
+1. Addresses the specific criticism without amplifying it
+2. Pivots to the candidate's strengths and record
+3. Includes suggested talking points for surrogates
+4. Notes the recommended tone (e.g., "firm but measured", "dismissive", "factual rebuttal")
+
+Return JSON:
+{
+  "response_text": "The full response draft with talking points",
+  "tone": "Recommended tone description"
+}
+
+Return ONLY valid JSON.`,
+      },
+    ],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in hit response");
   return JSON.parse(jsonMatch[0]);
 }

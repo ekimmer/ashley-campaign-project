@@ -83,3 +83,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  [data-slot="button"] {
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
+  }
+  [data-slot="button"]:hover {
+    box-shadow: 0 0 16px rgba(236, 72, 153, 0.45);
+  }
+}

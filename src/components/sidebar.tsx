@@ -8,6 +8,8 @@ import {
   Landmark,
   Bell,
   Users,
+  Star,
+  Lightbulb,
   Settings,
   Menu,
   X,
@@ -19,6 +21,8 @@ const navItems = [
   { href: "/va-politics", label: "VA Politics", icon: Landmark },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/opponents", label: "Opponents", icon: Users },
+  { href: "/news-connector", label: "NewsConnector", icon: Star },
+  { href: "/content-map", label: "ContentMap", icon: Lightbulb },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

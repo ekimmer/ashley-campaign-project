@@ -17,11 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Article, SentimentType } from "@/types/database";
 
 interface ArticleTableProps {
   articles: Article[];
   onArticleClick: (article: Article) => void;
+  starredArticleIds?: Set<string>;
+  onToggleStar?: (articleId: string) => void;
 }
 
 const sentimentColors: Record<SentimentType, string> = {
@@ -34,7 +38,7 @@ const sentimentColors: Record<SentimentType, string> = {
 type SortField = "date_published" | "outlet" | "sentiment" | "reach";
 type SortDir = "asc" | "desc";
 
-export function ArticleTable({ articles, onArticleClick }: ArticleTableProps) {
+export function ArticleTable({ articles, onArticleClick, starredArticleIds, onToggleStar }: ArticleTableProps) {
   const [sentimentFilter, setSentimentFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("date_published");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -96,6 +100,7 @@ export function ArticleTable({ articles, onArticleClick }: ArticleTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              {onToggleStar && <TableHead className="w-10"></TableHead>}
               <TableHead className="w-[300px]">Headline</TableHead>
               <TableHead>Reporter</TableHead>
               <TableHead
@@ -132,6 +137,26 @@ export function ArticleTable({ articles, onArticleClick }: ArticleTableProps) {
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => onArticleClick(article)}
               >
+                {onToggleStar && starredArticleIds && (
+                  <TableCell>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleStar(article.id);
+                      }}
+                      className="hover:scale-110 transition-transform"
+                    >
+                      <Star
+                        className={cn(
+                          "h-4 w-4",
+                          starredArticleIds.has(article.id)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-muted-foreground"
+                        )}
+                      />
+                    </button>
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">
                   <a
                     href={article.url}

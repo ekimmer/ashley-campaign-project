@@ -10,6 +10,7 @@ export type EntityRole = "subject" | "mentioned" | "quoted";
 export type EntityType = "opponent" | "supporter" | "neutral" | "other";
 export type DetectedEntityRole = "opponent" | "supporter" | "neutral";
 export type UserCampaignRole = "owner" | "admin" | "viewer";
+export type ContentIdeaCategory = "social" | "video" | "interview";
 
 export interface Campaign {
   id: string;
@@ -130,6 +131,91 @@ export interface Alert {
   created_at: string;
   // Joined fields
   article?: Article;
+  alert_articles?: AlertArticle[];
+}
+
+export interface AlertArticle {
+  id: string;
+  alert_id: string;
+  article_id: string;
+  created_at: string;
+  // Joined fields
+  article?: Article;
+}
+
+export interface CandidateHit {
+  id: string;
+  campaign_id: string;
+  article_id: string;
+  source_name: string;
+  comment_summary: string;
+  context: string;
+  created_at: string;
+  // Joined fields
+  article?: Article;
+}
+
+export interface ArticleStar {
+  id: string;
+  campaign_id: string;
+  article_id: string;
+  starred_at: string;
+}
+
+export interface Tag {
+  id: string;
+  campaign_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+}
+
+export interface ArticleTag {
+  id: string;
+  article_id: string;
+  tag_id: string;
+  created_at: string;
+  // Joined fields
+  tag?: Tag;
+}
+
+export interface ArticleNote {
+  id: string;
+  campaign_id: string;
+  article_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentIdea {
+  id: string;
+  campaign_id: string;
+  category: ContentIdeaCategory;
+  title: string;
+  content: string;
+  format: string;
+  source_article_ids: string[];
+  generated_at: string;
+}
+
+export interface NewsletterOutline {
+  id: string;
+  campaign_id: string;
+  outline_html: string;
+  source_article_ids: string[];
+  generated_at: string;
+  period_start: string;
+  period_end: string;
+}
+
+export interface HitResponse {
+  id: string;
+  campaign_id: string;
+  hit_id: string;
+  response_text: string;
+  tone: string | null;
+  generated_at: string;
 }
 
 export interface Digest {

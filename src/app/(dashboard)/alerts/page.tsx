@@ -16,9 +16,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { Check, AlertTriangle, AlertCircle, Info, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Alert } from "@/types/database";
 import { toast } from "sonner";
+
+const sentimentColors = {
+  positive: "bg-green-100 text-green-800",
+  neutral: "bg-gray-100 text-gray-800",
+  negative: "bg-red-100 text-red-800",
+  mixed: "bg-yellow-100 text-yellow-800",
+};
 
 const tierConfig = {
   critical: {
@@ -46,6 +54,7 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [tierFilter, setTierFilter] = useState("all");
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,7 +65,7 @@ export default function AlertsPage() {
   async function fetchAlerts() {
     const { data } = await supabase
       .from("alerts")
-      .select("*, article:articles(headline, url, outlet)")
+      .select("*, alert_articles(id, article_id, article:articles(id, headline, url, outlet, date_published, sentiment))")
       .eq("campaign_id", campaign!.id)
       .order("created_at", { ascending: false });
 
@@ -121,7 +130,15 @@ export default function AlertsPage() {
             const Icon = config.icon;
 
             return (
-              <Card key={alert.id} className={`${config.bg} ${alert.acknowledged ? "opacity-60" : ""}`}>
+              <Card
+                key={alert.id}
+                className={cn(
+                  config.bg,
+                  alert.acknowledged ? "opacity-60" : "",
+                  "cursor-pointer"
+                )}
+                onClick={() => setExpandedAlertId(expandedAlertId === alert.id ? null : alert.id)}
+              >
                 <CardContent className="py-4">
                   <div className="flex items-start gap-3">
                     <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${config.color}`} />
@@ -130,6 +147,7 @@ export default function AlertsPage() {
                         <Badge className={config.badge} variant="secondary">
                           {alert.tier}
                         </Badge>
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", expandedAlertId === alert.id && "rotate-180")} />
                         <span className="text-xs text-muted-foreground">
                           {new Date(alert.created_at).toLocaleString()}
                         </span>
@@ -143,12 +161,52 @@ export default function AlertsPage() {
                       <p className="text-sm text-muted-foreground mt-1">
                         {alert.description}
                       </p>
+                      {expandedAlertId === alert.id && (
+                        <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                          {((alert as any).alert_articles || []).map((aa: any) => (
+                            <div key={aa.id} className="flex items-center gap-3 p-2 bg-background/50 rounded text-sm">
+                              <div className="flex-1 min-w-0">
+                                <a href={aa.article?.url} target="_blank" rel="noopener noreferrer"
+                                   className="text-primary hover:underline font-medium"
+                                   onClick={(e) => e.stopPropagation()}>
+                                  {aa.article?.headline}
+                                </a>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                  <span>{aa.article?.outlet}</span>
+                                  <span>&middot;</span>
+                                  <span>{aa.article?.date_published}</span>
+                                </div>
+                              </div>
+                              {aa.article?.sentiment && (
+                                <Badge className={sentimentColors[aa.article.sentiment as keyof typeof sentimentColors]} variant="secondary">
+                                  {aa.article.sentiment}
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                          {(!(alert as any).alert_articles || (alert as any).alert_articles.length === 0) && (alert as any).article && (
+                            <div className="flex items-center gap-3 p-2 bg-background/50 rounded text-sm">
+                              <div className="flex-1 min-w-0">
+                                <a href={(alert as any).article.url} target="_blank" rel="noopener noreferrer"
+                                   className="text-primary hover:underline font-medium"
+                                   onClick={(e) => e.stopPropagation()}>
+                                  {(alert as any).article.headline}
+                                </a>
+                                <span className="text-xs text-muted-foreground ml-2">{(alert as any).article.outlet}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {!alert.acknowledged && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => acknowledgeAlert(alert.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          acknowledgeAlert(alert.id);
+                        }}
                       >
                         <Check className="h-4 w-4 mr-1" />
                         Acknowledge

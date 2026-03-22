@@ -1,8 +1,8 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { searchNews } from "@/lib/serper";
 import { scrapeArticle } from "@/lib/scraper";
-import { analyzeArticle, generateBinSummary } from "@/lib/ai-analysis";
-import type { Campaign, Opponent, BinType } from "@/types/database";
+import { analyzeArticle, generateBinSummary, determineAlertGrouping } from "@/lib/ai-analysis";
+import type { Campaign, Opponent, BinType, Alert } from "@/types/database";
 import { resend } from "@/lib/resend";
 
 // Parse relative date strings like "1 month ago", "2 days ago", "5 hours ago"
@@ -153,7 +153,7 @@ export async function runIngestion(campaignId: string): Promise<{ newArticles: n
           bin: analysis.bin,
           headline: articleData.title,
           url: articleData.link,
-          reporter: null,
+          reporter: scraped.author || null,
           outlet: articleData.source,
           date_published: parseRelativeDate(articleData.date),
           sentiment: analysis.sentiment,
@@ -199,27 +199,77 @@ export async function runIngestion(campaignId: string): Promise<{ newArticles: n
         });
       }
 
-      // Create alert if needed
-      if (analysis.alert_tier && analysis.alert_tier !== "none") {
-        const { data: alert } = await supabase
-          .from("alerts")
-          .insert({
-            campaign_id: campaignId,
-            article_id: insertedArticle.id,
-            tier: analysis.alert_tier,
-            title: articleData.title,
-            description: analysis.alert_reason || `${analysis.sentiment} coverage in ${articleData.source}`,
-          })
-          .select("*")
-          .single();
+      // Insert candidate hits
+      for (const hit of analysis.candidate_hits || []) {
+        await supabase.from("candidate_hits").insert({
+          campaign_id: campaignId,
+          article_id: insertedArticle.id,
+          source_name: hit.source_name,
+          comment_summary: hit.comment_summary,
+          context: hit.context,
+        });
+      }
 
-        // Send immediate email for critical alerts
-        if (analysis.alert_tier === "critical" && campaign.alert_email) {
+      // Create alert if needed (with aggregation)
+      if (analysis.alert_tier && analysis.alert_tier !== "none") {
+        const alertTitle = articleData.title;
+        const alertDescription = analysis.alert_reason || `${analysis.sentiment} coverage in ${articleData.source}`;
+
+        // Fetch recent alerts for aggregation
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const { data: recentAlerts } = await supabase
+          .from("alerts")
+          .select("id, title, description, tier")
+          .eq("campaign_id", campaignId)
+          .gte("created_at", sevenDaysAgo.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        // Ask AI if this should be grouped with an existing alert
+        const grouping = await determineAlertGrouping(
+          alertTitle,
+          alertDescription,
+          analysis.alert_tier,
+          (recentAlerts || []) as { id: string; title: string; description: string; tier: string }[]
+        );
+
+        let alertId: string;
+
+        if (grouping.existing_alert_id) {
+          // Group under existing alert
+          alertId = grouping.existing_alert_id;
+        } else {
+          // Create new alert
+          const { data: newAlert } = await supabase
+            .from("alerts")
+            .insert({
+              campaign_id: campaignId,
+              article_id: insertedArticle.id,
+              tier: analysis.alert_tier,
+              title: alertTitle,
+              description: alertDescription,
+            })
+            .select("id")
+            .single();
+
+          alertId = newAlert!.id;
+        }
+
+        // Insert into alert_articles junction table
+        await supabase.from("alert_articles").insert({
+          alert_id: alertId,
+          article_id: insertedArticle.id,
+        });
+
+        // Send immediate email for critical alerts (only for new alerts)
+        if (!grouping.existing_alert_id && analysis.alert_tier === "critical" && campaign.alert_email) {
           try {
             await resend.emails.send({
               from: "CampaignAssist <alerts@campaignassist.app>",
               to: campaign.alert_email,
-              subject: `🚨 Critical Alert: ${articleData.title}`,
+              subject: `Critical Alert: ${articleData.title}`,
               html: `
                 <h2>Critical Campaign Alert</h2>
                 <p><strong>${articleData.title}</strong></p>

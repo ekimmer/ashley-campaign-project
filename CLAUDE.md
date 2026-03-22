@@ -43,12 +43,24 @@ CampaignAssist is an AI-powered campaign intelligence platform built for Ashley 
 - Supabase handles: database, auth, row-level security, edge functions (cron jobs)
 - Vercel handles: Next.js frontend deployment
 
-## Future Modules (designed, not yet built)
+## Phase 2 Modules (built)
 
-- Social Media Tracker (Twitter/X, Facebook, Instagram)
+6. **NewsConnector** — Star articles from News Tracker, custom tagging with global managed pool, chronological free-text notes per article
+7. **ContentMap** — AI-generated social/video ideas, daily cron newsletter outline for supporters, AI hit responses to negative attacks
+8. **Tara/GOP Hits** — Comment-level negative hit detection in AI pipeline, hits tab on Opponents page
+
+## Phase 2 Improvements (built)
+
+- News Tracker dashboard cards (replaced tabs with clickable stat cards)
+- Alert aggregation (AI groups related alerts, click-to-expand showing linked articles)
+- Author extraction (multi-strategy: meta tags, JSON-LD, byline CSS, text patterns)
+- Pink button glow (all buttons have light pink shadow)
+
+## Future Modules (backburner, not yet built)
+
+- Social Media Tracker (Twitter/X, Facebook, Instagram ingestion)
 - Legislative Briefing (VA General Assembly)
 - Full Opposition Research Dossier
-- Content Engine (social content, newsletters, rapid response)
 - Debate and Event Prep
 
 ## Full Spec
@@ -62,13 +74,16 @@ src/
 ├── app/
 │   ├── (auth)/login/          # Login page
 │   ├── (dashboard)/           # Dashboard layout + pages
-│   │   ├── news/              # News Tracker (3-bin tabs + article table)
+│   │   ├── news/              # News Tracker (dashboard cards + article table)
 │   │   ├── va-politics/       # VA Politics briefing
-│   │   ├── alerts/            # Alert management
-│   │   ├── opponents/         # Opponent tracking + detection queue
+│   │   ├── alerts/            # Alert management (expandable, aggregated)
+│   │   ├── opponents/         # Opponent tracking + Tara/GOP Hits tab
+│   │   ├── news-connector/    # NewsConnector (starred articles, tags, notes)
+│   │   ├── content-map/       # ContentMap (social ideas, newsletter, hit responses)
 │   │   └── settings/          # Campaign configuration
 │   ├── api/scan/              # Manual scan trigger
 │   ├── api/briefing/          # Manual briefing refresh
+│   ├── api/content/           # ContentMap AI generation
 │   └── auth/callback/         # Supabase auth callback
 ├── components/                # Shared UI components
 ├── hooks/                     # Custom hooks (useCampaign)
@@ -83,13 +98,15 @@ src/
 supabase/
 └── functions/                 # Edge Functions (Deno)
     ├── ingest-articles/       # Cron: every 30 min
-    └── generate-digest/       # Cron: daily digest
+    ├── generate-digest/       # Cron: daily digest
+    └── generate-newsletter/   # Cron: daily newsletter outline
 ```
 
 ## Key Files
 
 - `src/lib/supabase/migrations/001_initial_schema.sql` — Full database schema + RLS
 - `src/lib/supabase/migrations/002_seed_data.sql` — Tara Durant campaign seed data
+- `src/lib/supabase/migrations/003_phase2_enhancements.sql` — Phase 2 tables (alert_articles, candidate_hits, article_stars, tags, article_tags, article_notes, content_ideas, newsletter_outlines, hit_responses)
 - `.env.local.example` — Required environment variables
 
 ## Status
@@ -107,3 +124,14 @@ supabase/
 - [x] **Seed data** — Migrations applied, Ashley's account linked as owner, campaign seeded
 - [x] **Cron jobs** — Ingestion every 30 min (7am-8pm EST), daily digest at 7am EST
 - [x] **Production** — Live at https://ashley-project-seven.vercel.app
+
+### Phase 2
+
+- [x] News Tracker dashboard cards (replaced tab navigation with clickable stat cards)
+- [x] Alert aggregation (AI-driven grouping, click-to-expand article list)
+- [x] Author extraction (multi-strategy scraper: meta, JSON-LD, byline, text patterns)
+- [x] Tara/GOP Hits (comment-level negative hit detection in AI pipeline, Opponents tab)
+- [x] NewsConnector (star articles, global tag pool, chronological notes)
+- [x] ContentMap (social/video ideas, daily newsletter outline, AI hit responses)
+- [x] Pink button glow (global light pink shadow on all buttons)
+- [ ] **Deploy Phase 2** — Run migration 003, deploy Edge Function, push to Vercel
