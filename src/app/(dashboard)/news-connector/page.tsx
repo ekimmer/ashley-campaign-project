@@ -210,17 +210,17 @@ export default function NewsConnectorPage() {
           </div>
 
           {/* Article table */}
-          <div className="border rounded-lg">
-            <Table>
+          <div className="border rounded-lg overflow-x-auto">
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10"></TableHead>
                   <TableHead className="w-10"></TableHead>
-                  <TableHead className="w-[280px]">Headline</TableHead>
-                  <TableHead>Outlet</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Sentiment</TableHead>
-                  <TableHead>Tags</TableHead>
+                  <TableHead className="w-[35%]">Headline</TableHead>
+                  <TableHead className="w-[12%]">Outlet</TableHead>
+                  <TableHead className="w-[10%]">Date</TableHead>
+                  <TableHead className="w-[10%]">Sentiment</TableHead>
+                  <TableHead className="w-[18%]">Tags</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,30 +266,31 @@ export default function NewsConnectorPage() {
                           </div>
 
                           {/* Headline */}
-                          <div className="flex-1 min-w-0 w-[280px] px-2 py-3 font-medium">
+                          <div className="w-[35%] px-2 py-3 font-medium truncate">
                             <a
                               href={article.url}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary hover:underline text-sm"
                               onClick={(e) => e.stopPropagation()}
+                              title={article.headline}
                             >
                               {article.headline}
                             </a>
                           </div>
 
                           {/* Outlet */}
-                          <div className="w-[100px] px-2 py-3 text-sm">
+                          <div className="w-[12%] px-2 py-3 text-sm truncate" title={article.outlet}>
                             {article.outlet}
                           </div>
 
                           {/* Date */}
-                          <div className="w-[100px] px-2 py-3 text-sm text-muted-foreground">
+                          <div className="w-[10%] px-2 py-3 text-sm text-muted-foreground">
                             {article.date_published || "—"}
                           </div>
 
                           {/* Sentiment */}
-                          <div className="w-[100px] px-2 py-3">
+                          <div className="w-[10%] px-2 py-3">
                             <Badge
                               className={sentimentColors[article.sentiment] || ""}
                               variant="secondary"
@@ -299,7 +300,7 @@ export default function NewsConnectorPage() {
                           </div>
 
                           {/* Tags */}
-                          <div className="flex-1 px-2 py-3">
+                          <div className="w-[18%] px-2 py-3 overflow-hidden">
                             <div className="flex gap-1 flex-wrap">
                               {article.tags.map((tag) => (
                                 <Badge

@@ -171,16 +171,27 @@ export function ArticleNotes({ campaignId, articleId }: ArticleNotesProps) {
         <Textarea
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
-          placeholder="Add a note..."
-          className="min-h-[60px]"
+          placeholder="Write a note about this article..."
+          className="min-h-[80px]"
         />
-        <Button
-          size="sm"
-          onClick={addNote}
-          disabled={saving || !newContent.trim()}
-        >
-          Add Note
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={addNote}
+            disabled={saving || !newContent.trim()}
+          >
+            {saving ? "Saving..." : "Save Note"}
+          </Button>
+          {newContent.trim() && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setNewContent("")}
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
