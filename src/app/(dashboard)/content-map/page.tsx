@@ -39,6 +39,7 @@ export default function ContentMapPage() {
   >([]);
   const [hitsLoading, setHitsLoading] = useState(true);
   const [generatingHitId, setGeneratingHitId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"ideas" | "newsletter" | "hits">("ideas");
 
   // Fetch content ideas (last 3 days)
   const fetchIdeas = useCallback(async () => {
@@ -185,8 +186,6 @@ export default function ContentMapPage() {
       </div>
     );
   }
-
-  const [activeTab, setActiveTab] = useState<"ideas" | "newsletter" | "hits">("ideas");
 
   const tabs = [
     { id: "ideas" as const, label: "Social & Video Ideas", icon: Lightbulb, count: ideas.length },
