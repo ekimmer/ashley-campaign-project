@@ -103,5 +103,7 @@ supabase/
 - [x] Daily digest (Edge Function, styled email template)
 - [x] VA Politics briefing (AI-generated, hot issues, "So What")
 - [x] Opponent management (detection queue, approval, manual add)
-- [ ] **Deployment** — Supabase project setup, env vars, Vercel deploy
-- [ ] **Seed data** — Run migrations, create Ashley's account, associate with campaign
+- [x] **Deployment** — Supabase project setup, env vars, Vercel deploy
+- [x] **Seed data** — Migrations applied, Ashley's account linked as owner, campaign seeded
+- [x] **Cron jobs** — Ingestion every 30 min (7am-8pm EST), daily digest at 7am EST
+- [x] **Production** — Live at https://ashley-project-seven.vercel.app
