@@ -19,9 +19,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Check, X, Edit, Eye, ExternalLink } from "lucide-react";
+import { UserPlus, Users, Check, X, ExternalLink, ShieldAlert } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Opponent, DetectedEntity, CandidateHit } from "@/types/database";
 import { toast } from "sonner";
 
@@ -34,6 +34,7 @@ export default function OpponentsPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newParty, setNewParty] = useState("");
+  const [activeTab, setActiveTab] = useState<"tracking" | "hits">("tracking");
   const supabase = createClient();
 
   useEffect(() => {
@@ -217,13 +218,47 @@ export default function OpponentsPage() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="tracking">
-        <TabsList>
-          <TabsTrigger value="tracking">Opponent Tracking</TabsTrigger>
-          <TabsTrigger value="hits">Tara/GOP Hits ({hits.length})</TabsTrigger>
-        </TabsList>
+      {/* Navigation cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[
+          { id: "tracking" as const, label: "Opponent Tracking", icon: Users, count: opponents.length, sub: "tracked opponents" },
+          { id: "hits" as const, label: "Tara/GOP Hits", icon: ShieldAlert, count: hits.length, sub: "detected hits" },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isSelected = activeTab === tab.id;
+          return (
+            <div
+              key={tab.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setActiveTab(tab.id); }}
+              className={cn(
+                "rounded-xl border-2 p-5 cursor-pointer transition-all",
+                isSelected
+                  ? "border-primary bg-primary/5 shadow-[0_0_12px_rgba(236,72,153,0.3)]"
+                  : "border-border bg-card hover:border-primary/50"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Icon className={cn("h-5 w-5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                <div>
+                  <p className={cn("font-semibold text-sm", isSelected ? "text-primary" : "text-foreground")}>
+                    {tab.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {tab.count} {tab.sub}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-        <TabsContent value="tracking" className="space-y-6">
+      {/* Tab content */}
+      {activeTab === "tracking" && (
+        <div className="space-y-6">
           {/* Detected Entities Review Queue */}
           {Object.keys(groupedEntities).length > 0 && (
             <Card>
@@ -325,9 +360,11 @@ export default function OpponentsPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="hits" className="space-y-4">
+      {activeTab === "hits" && (
+        <div className="space-y-4">
           {hits.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
@@ -376,8 +413,8 @@ export default function OpponentsPage() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
